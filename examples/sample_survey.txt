@@ -1,0 +1,10 @@
+1. How satisfied are you with our fast and friendly support?
+2. Don't you agree that our amazing app is easy to use?
+3. How often do you regularly use the product?
+Excellent, Very Good, Good, Satisfied, Poor
+4. What is your annual income?
+5. Rate our service: 0-5, 5-10
+6. Would you not be unwilling to recommend us?
+7. How much do you love our new NPS dashboard and CSAT reporting?
+8. How likely are you to recommend us?
+Very likely, Likely, Neutral, Unlikely, Very unlikely
