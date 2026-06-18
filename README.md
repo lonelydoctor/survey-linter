@@ -13,6 +13,10 @@
   <img alt="ci" src="https://img.shields.io/badge/tests-unittest-informational" />
 </p>
 
+<p align="center">
+  <a href="https://lonelydoctor.github.io/survey-linter/web/"><b>▶ Try the live demo</b></a> — runs entirely in your browser; nothing is uploaded.
+</p>
+
 ---
 
 ## Why
