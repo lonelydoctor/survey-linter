@@ -1,0 +1,37 @@
+name: "survey-linter"
+description: "Audit survey/questionnaire files for biased questions in CI — deterministic, multilingual, zero-dependency."
+branding:
+  icon: "check-square"
+  color: "blue"
+inputs:
+  paths:
+    description: "Space-separated survey files to lint."
+    required: true
+  lang:
+    description: "Language: en, zh, or auto."
+    required: false
+    default: "auto"
+  fail-on:
+    description: "Fail the job on an issue at/above this severity: high|med|low|any|none."
+    required: false
+    default: "high"
+  min-score:
+    description: "Fail if a survey scores below this (0-100). Empty to disable."
+    required: false
+    default: ""
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        set -e
+        extra=""
+        if [ -n "${{ inputs.min-score }}" ]; then extra="--min-score ${{ inputs.min-score }}"; fi
+        status=0
+        for f in ${{ inputs.paths }}; do
+          echo "::group::survey-linter $f"
+          python3 "${{ github.action_path }}/scripts/lint_survey.py" "$f" \
+            --lang "${{ inputs.lang }}" --fail-on "${{ inputs.fail-on }}" $extra || status=1
+          echo "::endgroup::"
+        done
+        exit $status
