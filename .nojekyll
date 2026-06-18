@@ -1,0 +1,2 @@
+# Disable Jekyll so GitHub Pages serves every file as-is — including the
+# surveylinter/*.py modules the web demo fetches (Jekyll would drop _util.py).
