@@ -1,0 +1,8 @@
+{
+  "language": "auto",
+  "disable": ["slash_ambiguity"],
+  "severity": { "sensitive_topic": "med" },
+  "ignore": ["^Optional:", "internal use only"],
+  "fail_on": "high",
+  "min_score": 70
+}

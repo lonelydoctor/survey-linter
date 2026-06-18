@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>survey-linter — audit your survey for biased questions</title>
+<style>
+  :root { --fg:#1c2330; --muted:#5b6675; --line:#e3e8ef; --accent:#2563eb; --bg:#f7f9fc; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         color:var(--fg); background:var(--bg); }
+  .wrap { max-width:920px; margin:0 auto; padding:32px 20px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .privacy { display:inline-block; font-size:12.5px; color:#0a7d33; background:#e8f7ee;
+             border:1px solid #bce8cc; border-radius:999px; padding:3px 10px; margin-bottom:18px; }
+  textarea { width:100%; min-height:200px; padding:12px; border:1px solid var(--line);
+             border-radius:10px; font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; resize:vertical; }
+  .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:12px 0; }
+  label { font-size:13px; color:var(--muted); }
+  select, button { font:14px inherit; padding:8px 12px; border-radius:8px; border:1px solid var(--line); background:#fff; }
+  button { background:var(--accent); color:#fff; border:none; cursor:pointer; font-weight:600; }
+  button[disabled] { opacity:.55; cursor:progress; }
+  pre { background:#0e1726; color:#e6edf6; border-radius:10px; padding:16px; overflow:auto;
+        font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre-wrap; word-break:break-word; min-height:60px; }
+  .status { color:var(--muted); font-size:13px; }
+  a { color:var(--accent); }
+  footer { margin-top:28px; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>survey-linter</h1>
+  <p class="sub">Audit your survey for biased questions <b>before</b> you send it. Deterministic, explainable, multilingual.</p>
+  <span class="privacy">🔒 Runs 100% in your browser — your survey never leaves this page.</span>
+
+  <textarea id="input">1. How satisfied are you with our fast and friendly support?
+Excellent, Very Good, Good, Satisfied, Poor
+2. Don't you agree that our amazing app is easy to use?
+3. How often do you regularly use the product?
+4. What is your annual income?
+5. Rate our service: 0-5, 5-10
+6. Would you not be unwilling to recommend us?
+7. How much do you love our new NPS dashboard and CSAT reporting?
+8. How likely are you to recommend us?</textarea>
+
+  <div class="row">
+    <label>Language
+      <select id="lang"><option value="auto">auto</option><option value="en">English</option><option value="zh">中文</option></select>
+    </label>
+    <label>Format
+      <select id="format"><option value="auto">auto</option><option value="plaintext">plain text</option><option value="markdown">markdown</option><option value="csv">CSV</option></select>
+    </label>
+    <button id="run" disabled>Loading engine…</button>
+    <span class="status" id="status">Booting Python (Pyodide)…</span>
+  </div>
+
+  <pre id="out">Results will appear here.</pre>
+
+  <footer>
+    Powered by the same zero-dependency engine as the CLI &amp; Claude skill.
+    <a href="https://github.com/lonelydoctor/survey-linter">GitHub</a> ·
+    <code>python -m surveylinter your_survey.txt</code>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+<script>
+const MODULES = [
+  "__init__.py","model.py","_util.py","rules.py","scales.py","structure.py",
+  "score.py","engine.py","parse.py","config.py","fix.py","report.py",
+  "lexicons/__init__.py","lexicons/en.py","lexicons/zh.py",
+  "importers/__init__.py","importers/google_forms.py","importers/typeform.py","importers/qualtrics.py",
+];
+const $ = (id) => document.getElementById(id);
+let pyodide = null;
+
+async function boot() {
+  try {
+    pyodide = await loadPyodide();
+    pyodide.FS.mkdir("surveylinter");
+    pyodide.FS.mkdir("surveylinter/lexicons");
+    pyodide.FS.mkdir("surveylinter/importers");
+    for (const m of MODULES) {
+      const res = await fetch("../surveylinter/" + m);
+      if (!res.ok) throw new Error("fetch failed: " + m + " (" + res.status + ")");
+      pyodide.FS.writeFile("surveylinter/" + m, await res.text());
+    }
+    pyodide.runPython("import sys; sys.path.insert(0, '.')\nimport surveylinter");
+    $("run").disabled = false;
+    $("run").textContent = "Lint my survey";
+    $("status").textContent = "Ready.";
+  } catch (e) {
+    $("status").textContent = "Failed to load: " + e.message + " — serve this page over http(s), not file://.";
+  }
+}
+
+function lint() {
+  if (!pyodide) return;
+  $("status").textContent = "Linting…";
+  try {
+    pyodide.globals.set("_text", $("input").value);
+    pyodide.globals.set("_lang", $("lang").value);
+    pyodide.globals.set("_fmt", $("format").value);
+    const out = pyodide.runPython(
+      "import surveylinter\n" +
+      "from surveylinter import report as _r\n" +
+      "_rep = surveylinter.lint_text(_text, lang=_lang, fmt=_fmt)\n" +
+      "_r.render_human(_rep)"
+    );
+    $("out").textContent = out;
+    $("status").textContent = "Done.";
+  } catch (e) {
+    $("out").textContent = "Error: " + e.message;
+    $("status").textContent = "Error.";
+  }
+}
+
+$("run").addEventListener("click", lint);
+boot();
+</script>
+</body>
+</html>

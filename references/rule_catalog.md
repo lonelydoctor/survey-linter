@@ -1,55 +1,76 @@
 # Rule catalog — what biases survey data and how to fix it
 
-Reference for the judgment layer. Each rule: what it is, why it biases data, how to fix. Severity: 🔴 high (will distort results), 🟠 medium (likely distortion), 🟡 low (hygiene).
+Reference for both the deterministic engine and the judgment layer. Severity:
+🔴 high (will distort results), 🟠 medium (likely distortion), 🟡 low (hygiene).
 
-## Wording
+Each rule has a stable **code** you can use in `.surveylinterrc` to `disable` it or
+override its `severity`. Rules read language-specific cues from the lexicon, so they
+apply in every supported language (English, 简体中文).
 
-**Double-barreled 🔴** — one item asks about two things ("fast *and* friendly", "price *and* quality"). A respondent who feels differently about each has no honest answer. *Fix:* split into one item per attribute.
+## Wording rules
 
-**Leading / loaded 🔴** — wording signals the "right" answer ("How *amazing* was…", "*Don't you agree*…", "our *award-winning* product"). Inflates agreement. *Fix:* strip evaluative adjectives and agreement cues; ask neutrally.
+| code | rule | sev | why it biases data → fix |
+|---|---|---|---|
+| `double_barreled` | Double-barreled | 🔴 | Asks two things at once ("fast *and* friendly"). A respondent who feels differently about each can't answer. *Split into one item per attribute.* |
+| `leading_loaded` | Leading / loaded | 🔴 | Wording signals the "right" answer ("*amazing*", "*don't you agree*"). Inflates agreement. *Strip evaluative adjectives and agreement cues.* |
+| `presupposition` | Presupposition | 🔴 | Assumes something not established ("How much do you *love* X?"). *Ask whether, then how much.* |
+| `absolutes` | Absolutes | 🟠 | "always / never / all / none" force all-or-nothing. *Use a frequency scale or soften.* |
+| `vague_quantifier` | Vague quantifier | 🟠 | "often / regularly / usually" mean different things to each person → not comparable. *Use concrete ranges.* |
+| `double_negative` | Double negative | 🟠 | "would you *not* be *unwilling*…" — high misread rate. *Phrase positively.* |
+| `recall_burden` | Recall burden | 🟠 | "how many times in the last 12 months…" — memory is unreliable. *Shorten the window or offer ranges / "don't recall".* |
+| `ambiguous_referent` | Ambiguous referent | 🟠 | Opens with "it / they / this" with no antecedent. *Name the thing.* |
+| `slash_ambiguity` | Slash ambiguity | 🟠 | A slash often hides two concepts ("price/value"). *Confirm it's one concept.* |
+| `piped_text` | Piped / dynamic text | 🟡 | `${...}` / `{{...}}` may not resolve or may read oddly. *Verify it always resolves.* |
+| `jargon` | Jargon / acronym | 🟡 | Terms only insiders know. *Spell out on first use.* |
+| `too_long` | Too long | 🟡 | Long items (> ~25 words / ~45 CJK chars) raise misreading. *One clear ask.* |
 
-**Presupposition 🔴** — assumes something not established ("How much do you *love* X?", "*Why* is X better?"). *Fix:* ask the yes/no or attitude first, then the degree.
+## Response-option & scale rules
 
-**Absolutes 🟠** — "always / never / all / none / every". Forces all-or-nothing; people round to the middle or refuse. *Fix:* use a frequency scale or soften.
-
-**Vague quantifiers 🟠** — "often / regularly / sometimes / usually". Each respondent defines them differently, so answers aren't comparable. *Fix:* concrete ranges ("1–2 times per week").
-
-**Double negative 🟠** — "would you *not* be *unwilling*…". High misread rate. *Fix:* phrase positively.
-
-**Ambiguous referent 🟠** — "it / they / this" with no clear antecedent. *Fix:* name the thing.
-
-**Recall burden 🟠** — "how many times in the last 12 months…". Memory is unreliable; people guess. *Fix:* shorten the window or use ranges/"don't recall".
-
-**Jargon / undefined acronym 🟡** — terms only insiders know. Non-experts guess or drop off. *Fix:* spell out / define on first use.
-
-**Too long 🟡** — > ~25 words. Misreading rises with length. *Fix:* one clear ask.
-
-## Response options & scales
-
-**Unbalanced scale 🔴** — more positive than negative anchors (Excellent/Very Good/Good/Fair/Poor is 3 pos, 1 neutral, 1 neg). Pulls responses positive. *Fix:* equal positive and negative anchors around a midpoint.
-
-**Overlapping ranges 🔴** — "0–5, 5–10". Boundary values fit two buckets. *Fix:* mutually exclusive ranges ("0–4, 5–9, 10+").
-
-**Missing neutral / forced choice 🟠** — even-point attitude scale with no midpoint forces a side. *Fix:* odd-numbered scale (5 or 7) or add "No opinion". (Sometimes forcing is intentional — note the tradeoff.)
-
-**Too many points 🟡** — beyond ~7 points respondents can't distinguish; adds noise. *Fix:* 5- or 7-point.
-
-**Non-exhaustive options 🟠** — no "Other" / "None of these" when the list may not cover everyone. *Fix:* add an escape option.
-
-**Overlapping/!mutually-exclusive categories 🟠** — pick-one lists whose items overlap. *Fix:* make them exclusive or allow multi-select.
+| code | rule | sev | why → fix |
+|---|---|---|---|
+| `unbalanced_scale` | Unbalanced scale | 🔴 | More positive than negative anchors (Excellent/Very good/Good/Fair/Poor) pulls responses up. *Equal positive and negative anchors around a midpoint.* |
+| `overlapping_ranges` | Overlapping ranges | 🔴 | "0–5, 5–10" — boundary values fit two buckets. *Mutually exclusive ranges (0–4, 5–9, 10+).* |
+| `missing_neutral` | No neutral midpoint | 🟠 | Even-point attitude scale with no midpoint forces a side. *Odd-numbered scale or add "No opinion".* |
+| `non_exhaustive` | Non-exhaustive options | 🟠 | Categorical pick-one with no "Other" / "None of these". *Add an escape option.* |
+| `too_many_points` | Too many points | 🟡 | Beyond ~7 points respondents can't distinguish; adds noise. *5- or 7-point.* |
 
 ## Structure (whole instrument)
 
-**Order / priming 🟠** — a specific or flattering item before a general one biases the general answer (praise the brand → then ask overall satisfaction). *Fix:* general/overall questions first, specific later; randomize where possible.
+| code | rule | sev | why → fix |
+|---|---|---|---|
+| `order_priming` | Order / priming | 🟠 | A flattering/specific item before a general one biases the general answer. *General/overall questions first; randomize where possible.* |
+| `sensitive_placement` | Sensitive placement | 🟡 | Sensitive items early drive drop-off. *Place late and make optional.* |
+| `length_fatigue` | Length / fatigue | 🟡 | Very long surveys lower data quality near the end. *Cut to the decisions you'll act on.* |
 
-**Sensitive without opt-out 🟡** — age, income, health, race, religion, gender identity, political, immigration, etc. Drives drop-off or false answers. *Fix:* make optional + "Prefer not to say"; place late.
+Sensitive *topics* (age, income, health, race, religion, gender identity, political,
+immigration, etc.) are flagged per item by `sensitive_topic` 🟡 — make them optional with
+a "Prefer not to say".
 
-**Length / fatigue 🟡** — very long surveys lower data quality near the end. *Fix:* cut to the decisions you'll actually make.
+## Scoring (transparent)
 
-**Missing "screen-out" / consistency check 🟡** — no attention check on long panels. *Fix:* add one if quality matters.
+```
+Score = 100 − (🔴 high × 12 + 🟠 med × 6 + 🟡 low × 2)   # floored at 0
+Grade: A ≥90, B ≥80, C ≥70, D ≥60, else F
+Verdict: ship-ready (no findings) · minor fixes (no high) · needs work (any high)
+```
+
+The report prints this arithmetic so it is reproducible by hand — there is no hidden model.
+
+## Multilingual notes
+
+- A scale or idiom may not translate cleanly — lint in the survey's own language (`--lang`).
+- CJK rules match on distinctive multi-character cues and count length in characters.
+- Adding a language is one lexicon file — see `CONTRIBUTING.md`.
 
 ## Likert quick-reference
 
 - 5-point agreement: Strongly disagree / Disagree / Neither / Agree / Strongly agree.
 - 5-point satisfaction: Very dissatisfied / Dissatisfied / Neither / Satisfied / Very satisfied.
-- Keep anchors symmetric, label every point (not just the ends), and keep one scale direction consistent across the survey.
+- Keep anchors symmetric, label every point, and keep one scale direction across the survey.
+
+## Methodology
+
+These rules operationalize long-standing survey-methodology guidance on question
+wording, response formats, and instrument order (e.g., the questionnaire-design and
+total-survey-error literature). The engine encodes the mechanical, checkable parts;
+the judgment layer covers the rest and explains, rather than asserts, each call.
