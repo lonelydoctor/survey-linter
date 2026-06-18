@@ -1,0 +1,8 @@
+- id: survey-lint
+  name: survey-linter (bias check)
+  description: Audit survey/questionnaire files for biased questions before commit.
+  entry: surveylinter
+  language: python
+  args: ["--fail-on", "high"]
+  files: '(^|/)(surveys?|questionnaires?)/.*\.(txt|md|csv|json)$'
+  pass_filenames: true

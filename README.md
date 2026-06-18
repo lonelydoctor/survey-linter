@@ -1,65 +1,140 @@
 <h1 align="center">survey-linter</h1>
 
 <p align="center">
-  <b>A Claude skill that catches the biased questions in your survey — before you send it.</b><br/>
-  Leading, double-barreled, loaded, and double-negative wording · unbalanced or overlapping scales · missing neutral options · sensitive questions without an opt-out · question-order priming.
+  <b>Audit your survey for biased questions — before you send it.</b><br/>
+  Deterministic · explainable · multilingual (English / 中文) · zero runtime dependencies.
 </p>
 
 <p align="center">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green" />
   <img alt="type" src="https://img.shields.io/badge/Claude-Agent%20Skill-6aa6ff" />
   <img alt="deps" src="https://img.shields.io/badge/runtime-no%20deps-success" />
+  <img alt="python" src="https://img.shields.io/badge/python-3.9%2B-blue" />
+  <img alt="ci" src="https://img.shields.io/badge/tests-unittest-informational" />
 </p>
 
 ---
 
 ## Why
 
-Most surveys are written by people who know their topic but not **measurement**. So the data comes back quietly biased — a leading question here, an unbalanced scale there — and you only notice after you've shipped it to 5,000 people. Survey *builders* (Typeform, SurveyMonkey, Google Forms) help you **create** questions fast; almost nothing **audits the question quality** before launch.
+Survey *builders* (Typeform, SurveyMonkey, Google Forms) help you **create** questions fast. Question-quality review does exist — but it's either a **black-box AI score** in a web app you paste into, or it's **locked inside one platform** (Qualtrics ExpertReview, SurveyMonkey Genius). If you write surveys outside those tools, in more than one language, or want results you can *verify*, there's a gap.
 
-`survey-linter` is that missing review step. Paste your survey; get an item-by-item report of what will bias your results and a fixed version of each question.
+`survey-linter` fills it differently:
+
+- **Deterministic & verifiable** — the high-confidence problems come from a rule engine, and every flag points to the exact wording. The quality **score is a formula you can reproduce by hand**, not a model you have to trust.
+- **Local & private** — runs on your machine, in CI, or 100% in your browser. Your survey never has to leave your laptop.
+- **Embeddable** — a CLI, a Claude skill, a GitHub Action, and a pre-commit hook. Lint surveys where you already work.
+- **Multilingual** — English and Simplified Chinese today; adding a language is one file.
+- **Free & open**, with **zero runtime dependencies** (standard library only).
+
+## How it compares
+
+| | survey-linter | Standalone AI checkers | Platform built-ins (Qualtrics / SurveyMonkey) |
+|---|---|---|---|
+| Verifiable (line-level, not a black box) | ✅ | ❌ (opaque) | ❌ (opaque score) |
+| Runs locally / offline / in CI | ✅ | ❌ | ❌ |
+| Works outside any one platform | ✅ | ✅ | ❌ |
+| Multilingual rule packs | ✅ EN/中文 | partial | partial |
+| Free & open source | ✅ | varies | ❌ |
 
 ## What it catches
 
-- **Wording:** leading / loaded, double-barreled, presupposition, absolutes (always/never), vague quantifiers (often/regularly), double negatives, jargon, over-long items.
-- **Scales:** unbalanced anchors, overlapping numeric ranges, missing neutral midpoint, too many points.
-- **Structure:** question-order priming, sensitive questions without "Prefer not to say".
+- **Wording** — leading/loaded, double-barreled, presupposition, absolutes (always/never), vague quantifiers, double negatives, recall burden, ambiguous referents, piped/dynamic text, jargon, over-long items.
+- **Scales** — unbalanced anchors, overlapping numeric ranges, missing neutral midpoint, too many points, non-exhaustive option lists.
+- **Structure** — question-order priming, sensitive questions placed too early / without an opt-out, survey fatigue.
 
-## Why you can trust it
-
-The high-confidence problems are found by a **deterministic script** (`scripts/lint_survey.py`) — every flag points to exact wording you can verify. The judgment calls (is this *leading*?) are **explained, not asserted**. It never asks you to trust a black-box verdict.
+Full taxonomy with severities and fixes: [`references/rule_catalog.md`](references/rule_catalog.md).
 
 ## Quick start
 
-As a Claude skill (Claude Code / Claude Desktop):
+**As a Claude skill** (Claude Code / Desktop): add the folder as a skill/plugin, then *"review this survey before I send it."*
 
-```
-/plugin add ./survey-linter        # or install from a marketplace once published
-```
-Then just paste or point at your survey: *"review this survey before I send it."*
-
-Or run the deterministic checks directly:
+**As a CLI** (zero install — stdlib only):
 
 ```bash
-python scripts/lint_survey.py examples/sample_survey.txt
-python scripts/lint_survey.py my_survey.txt --json
+python scripts/lint_survey.py examples/sample_survey.txt        # human report + score
+python scripts/lint_survey.py examples/sample_survey_zh.txt --lang zh
+python scripts/lint_survey.py my_survey.txt --json              # machine-readable
+python scripts/lint_survey.py my_survey.txt --fix              # suggested revisions
 ```
 
-See a full before/after in [`examples/example_audit.md`](examples/example_audit.md).
+**Installed** (adds the `surveylinter` command, still zero runtime deps):
+
+```bash
+pip install -e .
+surveylinter my_survey.md --format markdown
+echo "Don't you agree our amazing app is great?" | surveylinter -
+```
+
+**Python API:**
+
+```python
+import surveylinter
+report = surveylinter.lint_text("Don't you agree our amazing app is fast and friendly?")
+print(report.score.value, report.score.verdict)
+```
+
+**In the browser** — open [`web/index.html`](web/index.html) (served over http, or via GitHub Pages). It runs the real engine client-side with Pyodide; nothing is uploaded.
+
+## Input formats
+
+Auto-detected by extension/content, or forced with `--format`:
+
+`plaintext` · `markdown` (sections + scales) · `csv` · `google-forms` (API JSON) · `typeform` (form JSON) · `qualtrics` (`.qsf`). Matrix/grid questions, branching, and piped text are handled.
+
+## Transparent scoring
+
+```
+Score = 100 − (🔴 high × 12 + 🟠 med × 6 + 🟡 low × 2)   # floored at 0
+```
+
+The report prints the exact arithmetic so anyone can reproduce it — no hidden model.
+
+## Configuration — `.surveylinterrc`
+
+Drop a JSON file in your project (auto-discovered) to tune the linter — disable rules, override severities, ignore lines, force a language, set CI gates. See [`examples/surveylinterrc.example.json`](examples/surveylinterrc.example.json).
+
+## CI / pre-commit / GitHub Action
+
+**GitHub Action** — fail a PR when a survey regresses:
+
+```yaml
+- uses: lonelydoctor/survey-linter@v0.2.0
+  with:
+    paths: surveys/*.md
+    lang: auto
+    fail-on: high
+```
+
+**pre-commit** — lint surveys before they're committed:
+
+```yaml
+repos:
+  - repo: https://github.com/lonelydoctor/survey-linter
+    rev: v0.2.0
+    hooks:
+      - id: survey-lint
+```
+
+Both use the CLI's exit codes (`--fail-on`, `--min-score`).
 
 ## How it works
 
 ```
-your survey ──▶ extract questions ──▶ lint_survey.py (deterministic flags)
-                                  └──▶ judgment layer (leading/priming/recall, explained)
-                                  └──▶ rewrite each flagged item ──▶ report + scorecard
+survey (txt/md/csv/Forms/Typeform/QSF)
+        │  importers → Question[]
+        ▼
+  deterministic rules ──▶ findings (each points to exact wording)
+        │  + transparent score
+        ▼
+  report (human / JSON / suggested fixes)         ← the verifiable layer
+        +
+  judgment layer (subtle leading / priming / recall, explained)  ← added by the Claude skill
 ```
-
-Full taxonomy of issues and fixes: [`references/rule_catalog.md`](references/rule_catalog.md).
 
 ## Contributing
 
-New checks are easy — add a rule to `scripts/lint_survey.py` and an entry to the rule catalog. PRs welcome.
+Adding a **rule** or a **language** is intentionally small — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Run the tests with `python -m unittest discover -s tests`.
 
 ## License
 

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "survey-linter"
+version = "0.2.0"
+description = "Audit your survey for biased questions before you send it — deterministic, explainable, multilingual, zero-dependency."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "lonelydoctor" }]
+keywords = ["survey", "questionnaire", "bias", "linter", "ux-research", "cli", "claude-skill"]
+dependencies = []  # zero runtime dependencies — standard library only
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Text Processing :: Linguistic",
+]
+
+[project.urls]
+Homepage = "https://github.com/lonelydoctor/survey-linter"
+Issues = "https://github.com/lonelydoctor/survey-linter/issues"
+
+[project.scripts]
+surveylinter = "surveylinter.cli:main"
+survey-linter = "surveylinter.cli:main"
+
+[tool.setuptools]
+packages = ["surveylinter", "surveylinter.lexicons", "surveylinter.importers"]
